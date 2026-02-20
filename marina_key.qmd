@@ -1,0 +1,52 @@
+---
+title: "PSRF Data Workshop 2026"
+author: "Marina Kochuten"
+format: html
+---
+
+# Intro to Quarto & Markdown
+
+::: callout-tip
+Quarto was Posit's follow up to R markdown files.
+
+Quarto documents are fully reproducible and support dozens of output formats, like PDFs, Word files, presentations, and more (my website is built with Quarto!).
+
+Quarto files are designed to be used in three ways:
+
+For communicating to decision-makers, who want to focus on the conclusions, not the code behind the analysis.
+
+For collaborating with other data scientists (including future you!), who are interested in both your conclusions, and how you reached them (i.e. the code).
+
+As an environment in which to do data science, as a modern-day lab notebook where you can capture not only what you did, but also what you were thinking.
+:::
+
+## Writing Markdown Text
+
+# This is a level one header
+
+## This is a level two header
+
+### This is a level three header
+
+#### And so on
+
+**This text is bold**
+
+*This text is italic*
+
+And this:
+
+-   is
+-   a
+-   list
+
+Here, I can link a [super cool website](https://restorationfund.org)
+
+::: callout-tip
+This is just a very brief intro to using Markdown in Quarto.
+
+To learn more about Markdown, inserting tables and figures, and more see this [Comprehensive Guide to Using Quarto](https://quarto.org/docs/guide/)
+:::
+
+
+
