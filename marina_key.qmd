@@ -254,5 +254,9 @@ penguins_clean <- penguins_clean |>
 head(penguins_clean)
 ```
 
+```{r}
+# Save cleaned penguin data ----
+write_csv(penguins_clean, here("data", "processed", "penguins.csv"))
+```
 
 
