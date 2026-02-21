@@ -42,11 +42,217 @@ And this:
 
 Here, I can link a [super cool website](https://restorationfund.org)
 
+**To write code** 
+
+Create a code chunk with the keyboard shortcut `Ctrl+Alt+I` (or `Cmd+Option+I` on Mac)
+
+To run it, use `Ctrl+Shift+Enter` (Mac users: `Cmd+Shift+Enter`)
+
+```{r}
+2 + 2
+```
+
+If we were to render this into a document, you would see the code as well as the output. We can change this by using code-chunk options:
+
+```{r}
+#| code-fold: true
+
+# This code will only show if you click on a dropdown to open it
+2 + 2
+```
+
+```{r}
+#| echo: false
+
+# This code will not show at all, only the output
+2 + 2
+```
+
+```{r}
+#| include: false
+
+# This code will run, but the code nor the output will show up in the rendered document
+2 + 2
+```
+
+
 ::: callout-tip
 This is just a very brief intro to using Markdown in Quarto.
 
 To learn more about Markdown, inserting tables and figures, and more see this [Comprehensive Guide to Using Quarto](https://quarto.org/docs/guide/)
 :::
+
+
+# Penguiuns Analysis
+
+## About
+
+This script hosts the code to clean and visualize data about the Palmer Penguins for the purpose of teaching some data wrangling best practices to the amazing PSRF team! 
+
+**About the data**
+
+There are 3 data files used in this analysis:
+
+- `messy_penguins.csv`: contains size measurements for three penguin species observed on three islands in the Palmer Archipelago, Antarctica
+- `island_info.csv`
+- `penguins_species_info.csv`
+
+`messy_penguins.csv` is derived from the Palmer Penguins data set from the Environmental Data Initiative (EDI) Data Portal. These data were collected from 2007 - 2009 by Dr. Kristen Gorman with the Palmer Station Long Term Ecological Research Program, part of the US Long Term Ecological Research Network. This data set was purposefully "messied" in order to practice some important data wrangling techniques.
+
+The other two data sets are entirely constructed from my imagination for teaching purposes
+
+## Setup
+
+```{r}
+# Load libraries ----
+library(tidyverse)
+library(here)
+library(janitor)
+library(lubridate)
+
+# Read in data ----
+penguins_raw <- read_csv(here("data", "raw", "messy_penguins.csv"))
+island_info_raw <- read_csv(here("data", "raw", "island_info.csv")) 
+species_info_raw <- read_csv(here("data", "raw", "penguin_species_info.csv"))
+```
+
+
+## Data exploration
+
+Always take some time to get to know the data. Understanding the underlying structure of your data ahead of time makes cleaning and analysis much easiser later!
+
+### Penguins data
+
+```{r}
+# What columns are in the penguins data?
+colnames(penguins_raw)
+
+# How many penguins species are in the data?
+n_distinct(penguins_raw$Species)
+
+# What are they?
+unique(penguins_raw$Species)
+
+# What islands?
+unique(penguins_raw$island)
+# Looks like we will need to clean up this column later
+
+# Are all species of penguins represented on all islands?
+penguins_raw |>
+  distinct(Species, island)
+```
+
+### Island info
+
+```{r}
+# What columns are in the Island info data?
+colnames(island_info_raw)
+```
+
+## Data Cleaning
+
+### Penguins
+
+```{r}
+# Peek at the data
+head(penguins_raw)
+```
+
+
+```{r}
+# Clean up column names for consistency
+penguins_clean <- penguins_raw |>
+  clean_names()
+
+# Check column name fix
+colnames(penguins_clean)
+```
+
+
+```{r}
+# Species column ----
+unique(penguins_clean$species) # looks good!
+```
+
+
+```{r}
+# Island column ----
+# Fix inconsistent capitalization in island column
+penguins_clean <- penguins_clean |>
+  mutate(island = str_to_title(island))
+
+# Check island column capitalization fix
+unique(penguins_clean$island)
+```
+
+```{r}
+# Bill length column ----
+range(penguins_clean$bill_length_mm, na.rm = TRUE)  # hmm... that's not right. 
+
+# Not only is -999 not a valid bill length, but I would expect this column to be strictly numeric
+class(penguins_clean$bill_length_mm) # Character, when would expect numeric
+
+# What values are not recognized as a numeric?
+penguins_clean |>
+  count(bill_length_mm) |>
+  filter(is.na(as.numeric(bill_length_mm)))
+
+# It is common to have multiple funky ways to encode NAs. Let's change that now
+penguins_clean <- penguins_clean |>
+  mutate(bill_length_mm = as.numeric(bill_length_mm)) 
+# Using as.numeric will make anything that R doesn't know how to make a number NA
+```
+
+I want to note that this is one way to carefully handle encoding NAs. I will also frequently do this when I read in the data, especially if I already know how NAs are handled. You can do this using the `na =` argument in `read_csv()`.
+
+```{r}
+# Now we can make sure the range of values for bill length makes sense
+range(penguins_clean$bill_length_mm, na.rm = TRUE)
+
+# Still need to handle -999
+penguins_clean <- penguins_clean |>
+  mutate(bill_length_mm = case_when(bill_length_mm == -999.0 ~ NA,
+                                    .default = bill_length_mm))
+
+# Check
+range(penguins_clean$bill_length_mm, na.rm = TRUE) # much better
+```
+
+In this case, I am going to skip over the next few columns and get to `observation_date`. I highly recommend taking the time to check through each column and look for anything unexpected at this stage in the data process! 
+
+```{r}
+# Observation date column ----
+head(penguins_clean$observation_date) # yikes, what a mess
+
+# Fix datetime column
+penguins_clean <- penguins_clean |>
+  mutate(date = parse_date_time(observation_date,
+                                orders = c("dmy", "ymd", "mdy", "ymd HMS")))
+
+head(penguins_clean$date)
+
+# Do not need to keep the time
+penguins_clean <- penguins_clean |>
+  separate(col = date,
+           into = c("date", "time"),
+           sep = " ") |>
+  # Need to re-convert to date after using separate()
+  mutate(date = as.Date(date))
+
+# Drop date columns we don't need
+penguins_clean <- penguins_clean |>
+  select(-c(time, observation_date))
+
+# Create some new variables based on date
+penguins_clean <- penguins_clean |>
+  mutate(year = year(date),
+         month = month(date, label = TRUE, abbr = FALSE),
+         day = day(date),
+         day_of_year = yday(date))
+
+# Check out changes
+head(penguins_clean)
+```
 
 
 
