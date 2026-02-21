@@ -254,9 +254,43 @@ penguins_clean <- penguins_clean |>
 head(penguins_clean)
 ```
 
+Other good ideas when cleaning data is to check for duplicates
+
+```{r}
+# Check for duplicate rows
+penguins_clean |>
+  get_dupes()
+```
+
+Deciding how to handle duplicates can be tricky. Is it possible that two penguins measured on the same day have the exact same measurements? Perhaps! It is possible that there was an error made during data entry? Also likely! Things I like to think about before removing duplicates:
+
+- Check field notes or datasheet scans
+- Check with field team / whoever entered the data when possible
+- Only a few duplicate observations in a large data set? Won't change much to remove
+- Lot's of duplicates, removing would take out more than 5% - 10% of the data? Reconsider
+
+Whatever you decide, the most important thing is that you document what you are doing and why. The beauty about making these changes 1. not in the raw data and 2. with code is that it is very easy to go back if you change your mind.
+
+For this case, let's assume it was a data entry error and remove the duplicate rows from the dataset entirely.
+
+```{r}
+# Remove duplicates in penguins data ----
+# Count rows before removing
+nrow(penguins_clean)
+
+# Remove duplicates
+penguins_clean <- penguins_clean |>
+  distinct()
+
+# Count rows after removing
+nrow(penguins_clean)
+```
+
+
 ```{r}
 # Save cleaned penguin data ----
 write_csv(penguins_clean, here("data", "processed", "penguins.csv"))
 ```
 
+Now that we have completed this chuck of data cleaning, let's push to GitHub. 
 
