@@ -110,6 +110,9 @@ library(tidyverse)
 library(here)
 library(janitor)
 library(lubridate)
+library(gghighlight)
+library(sysfonts)
+library(showtext)
 
 # Read in data ----
 penguins_raw <- read_csv(here("data", "raw", "messy_penguins.csv"))
@@ -142,7 +145,7 @@ unique(penguins_raw$island)
 
 ```{r}
 # What columns are in the Island info data?
-colnames(island_info_raw)
+colnames(nesting_raw)
 ```
 
 ## Data Cleaning
@@ -362,13 +365,13 @@ ggplot(pen_nest) +
 counts_bar <- penguins_clean |>
   mutate(species = fct_rev(fct_infreq(species))) |>
   ggplot() +
-  geom_bar(aes(x = species, fill = species)) +
+  geom_bar(aes(x = species)) +
   geom_text(aes(x = species, label = after_stat(count)),
             stat = "count",
             hjust = 1.5,
             color = "white",
             size = 5) +
- scale_fill_manual(values = c("darkorange","purple","cyan4")) +
+ # scale_fill_manual(values = c("darkorange","purple","cyan4")) +
   labs(title = "Penguins counts at Palmer Station LTER",
        subtitle = "2007 - 2009",
        caption = "Data: Gorman et al. 2014 via {palmerpenguins}") +
@@ -384,16 +387,84 @@ counts_bar <- penguins_clean |>
     plot.caption = element_text(face = "italic",
                                 color = "grey50"))
 
+ # theme(
+ #    axis.title = element_text(size = rel(1.2)), # 1.2 * base_size
+ #    axis.text = element_text(size = rel(0.8))   # 0.8 * base_size
+ #  )
+
 ggsave(here("figs", "counts_bar.png"), width = 6)
 ```
 
+
+
+
+# Visualization
+
+Let's build some viz together! In general, data viz has very few rules and a handful of suggestions. We won't have time to go over all of these today, but I can show you a few steps I take with almost all viz to make them look really nice and follow good practices.
+
+## Body mass histogram
+
+Let's start with a base plot showing the distribution of penguin body masses: 
+
 ```{r}
-# highlights and annotations ----
-# ex 1:
+# Penguin body mass histogram
 ggplot(data = penguins_clean, aes(x = body_mass_g)) +
-  geom_histogram(aes(fill = species), 
-                 alpha = 0.5, 
+  geom_histogram() +
+  labs(x = "Body mass (g)",
+       y = "Frequency",
+       title = "Penguin body mass") +
+  theme_minimal()
+```
+
+Let's color by species to see how the size distributions compare
+
+```{r}
+# Color histogram by species & update legend title
+ggplot(data = penguins_clean, aes(x = body_mass_g, fill = species)) +
+  geom_histogram(
+    #alpha = 0.5,
+                 # Unlike the default `position = "stack"`, "identity" places
+                 # bars from different groups at the same x positions 
+                 # and starting from 0 on the y axis, 
+                 # allowing them to overlap. Always use when comparing 
+                 # multiple groups in one histogram
                  position = "identity") +
+  labs(x = "Body mass (g)",
+       y = "Frequency",
+       title = "Penguin body mass",
+       fill = "Species") +
+  theme_minimal()
+```
+
+Always a good idea to change from the ggplot default colors
+
+```{r}
+# Change colors & transparency
+ggplot(data = penguins_clean, aes(x = body_mass_g, fill = species)) +
+  geom_histogram(position = "identity",
+                 alpha = 0.5) +
+  scale_fill_manual(values = c("darkorange","purple","cyan4")) +
+  labs(x = "Body mass (g)",
+       y = "Frequency",
+       title = "Penguin body mass",
+       fill = "Species") +
+  theme_minimal()
+```
+
+
+## Highlighting and Annotating
+
+There are many ways to use highlighting and annotations to help make comparisons and draw out important messages. 
+
+
+One way we can highlight specific groups:
+
+```{r}
+# Can also use gghighlight to easily highlight one group that you might want to showcase
+# gghighlight can be buggy, but also can be really great for drawing attention to certain lines, points, groups, etc
+ggplot(data = penguins_clean, aes(x = body_mass_g, fill = species)) +
+  geom_histogram(position = "identity",
+                 alpha = 0.5) +
   scale_fill_manual(values = c("darkorange","purple","cyan4")) +
   gghighlight(species == "Chinstrap", label_key = type) +
   labs(x = "Body mass (g)",
@@ -401,11 +472,13 @@ ggplot(data = penguins_clean, aes(x = body_mass_g)) +
        title = "Penguin body mass",
        fill = "Species") +
   theme_minimal()
+```
 
-# ex 2:
-ggplot(data = penguins_clean, aes(x = body_mass_g)) +
-  geom_histogram(aes(fill = species), 
-                 alpha = 0.5, 
+Alternatively, we can use `gghighlight` paired with facet to keep the other groups distributions across facets for easy comparison
+
+```{r}
+ggplot(data = penguins_clean, aes(x = body_mass_g, fill = species)) +
+  geom_histogram(alpha = 0.5, 
                  position = "identity") +
   scale_fill_manual(values = c("darkorange","purple","cyan4")) +
   gghighlight() +
@@ -414,41 +487,220 @@ ggplot(data = penguins_clean, aes(x = body_mass_g)) +
        y = "Frequency",
        title = "Penguin body mass") +
   theme_minimal()
+```
 
-# ex 3:
-ggplot(data = penguins,
-       aes(x = flipper_length_mm,
-           y = body_mass_g)) +
-  geom_point(aes(color = species, 
-                 shape = species),
-             size = 3,
-             alpha = 0.8) +
-  scale_color_manual(values = c("darkorange","purple","cyan4")) +
-  scale_y_continuous(labels = scales::label_comma()) +
+Now that we have a solid graphic form and messaging, I always add these last few touches to improve aesthetics and readability
+
+```{r}
+pen_hist <- ggplot(data = penguins_clean, aes(x = body_mass_g, fill = species)) +
+  geom_histogram(alpha = 0.5, 
+                 position = "identity") +
+  scale_fill_manual(values = c("darkorange","purple","cyan4")) +
+  gghighlight() +
+  facet_wrap(~species) +
+  labs(x = "Body mass (g)",
+       y = "Frequency",
+       title = "Penguin body mass") +
+  # Add a comma to the labels
+  scale_x_continuous(labels = scales::label_comma()) +
+  # Remove space between 0 and x axis
+  scale_y_continuous(expand = expansion(add = c(0, 0.5))) +
+  theme_minimal(base_size = 14) +
+  theme(
+    # Fix x axis text overlap by putting more space between the facet panels
+    panel.spacing.x = unit(1.25, "cm"),
+    # Increase facet title text and make bold
+    strip.text = element_text(size = rel(1), face = "bold"),
+    # Add border around facet panels to help me distinguish across x axis
+    panel.border = element_rect(),
+    # I always like to give things a little more breathing room by adding margins
+    axis.title.x = element_text(margin = margin(15, 0, 0, 0)),
+    axis.title.y = element_text(margin = margin(0, 15, 0, 0)),
+    plot.title = element_text(margin = margin(0, 0, 15, 0), face = "bold"),
+    plot.margin = margin(20, 20, 20, 20)
+  )
+
+# Now that I am pleased with this plot, I can save:
+ggsave(here("figs", "pen_hist.png"), pen_hist, width = 8, height = 4.5)
+```
+
+
+Annotations can be a good way to call out trends or observations. Let's start a new plot, this time a scatter plot of flipper length vs body mass:
+
+```{r}
+ggplot(penguins_clean, aes(x = flipper_length_mm, y = body_mass_g,
+                           color = species, shape = species)) +
+  geom_point(size = 3, alpha = 0.8) +
+  scale_color_manual(values = c("darkorange", "purple", "cyan4")) +
   labs(title = "Penguin size, Palmer Station LTER",
-       subtitle = "Flipper length and body mass for Adelie, Chinstrap and Gentoo Penguins",
+       subtitle = "Flipper length and body mass for Adelie, Chinstrap, and Gentoo Penguins",
        x = "Flipper length (mm)",
        y = "Body mass (g)",
        color = "Penguin species",
-       shape = "Penguin species") + 
-  ggforce::geom_mark_ellipse(aes(filter = species == "Gentoo", 
-                                 label = "Gentoo penguins", 
-                                 description = "This species tends to have larger body masses and flipper lengths than the other species"),
-                             color = "cyan4") +
-  theme_minimal(base_size = 16) +
-  theme(legend.position = c(0.2, 0.8),
-        legend.background = element_rect(fill = "white", color = "white"),
-        plot.title.position = "plot",
-        plot.margin = margin(10,10,10,10),
-        axis.title.x = element_text(margin = margin(15, 0, 0, 0)),
-        axis.title.y = element_text(margin = margin(0, 15, 0, 0)),
-        plot.subtitle = element_text(margin = margin(0,0,15,0))
+       shape = "Penguin species") +
+  theme_minimal()
+```
+
+Not bad! Let's increase our margins and play with our fonts:
+
+```{r}
+# Grab a google font to use in out plot
+font_add_google(name = "Josefin Sans", family = "jo")
+
+# Turn on the text renderer that will allow us to preview the Google font in the viewer
+showtext_auto()
+
+# Plot with new font
+ggplot(penguins_clean, aes(x = flipper_length_mm, y = body_mass_g,
+                           color = species, shape = species)) +
+  geom_point(size = 3, alpha = 0.8) +
+  scale_color_manual(values = c("darkorange", "purple", "cyan4")) +
+  labs(title = "Penguin size, Palmer Station LTER",
+       subtitle = "Flipper length and body mass for Adelie, Chinstrap, and Gentoo Penguins",
+       x = "Flipper length (mm)",
+       y = "Body mass (g)",
+       color = "Penguin species",
+       shape = "Penguin species") +
+  theme_minimal(base_size = 14) +
+  theme(
+    # Make all text be Josefin Sans
+    text = element_text(family = "jo"),
+    # Give plot some breathing room
+    axis.title.x = element_text(margin = margin(15, 0, 0, 0)),
+    axis.title.y = element_text(margin = margin(0, 15, 0, 0)),
+    plot.title = element_text(margin = margin(0, 0, 10, 0), face = "bold"),
+    plot.subtitle = element_text(margin = margin(0, 0, 15, 0)),
+    plot.margin = margin(20, 20, 20, 20),
+    # Move title all the way to the left
+    plot.title.position = "plot"
   )
 ```
 
+This is looking good! I will talk more on creative ways to handle legends a bit later. For now, to reduce eye movement and give the data more room, let's move this legend to inside the plot
+
 ```{r}
-# legend options ----
-# 1. move legend inside of plot to reduce eye movement
+ggplot(penguins_clean, aes(x = flipper_length_mm, y = body_mass_g,
+                           color = species, shape = species)) +
+  geom_point(size = 3, alpha = 0.8) +
+  scale_color_manual(values = c("darkorange", "purple", "cyan4")) +
+  labs(title = "Penguin size, Palmer Station LTER",
+       subtitle = "Flipper length and body mass for Adelie, Chinstrap, and Gentoo Penguins",
+       x = "Flipper length (mm)",
+       y = "Body mass (g)",
+       color = "Penguin species",
+       shape = "Penguin species") +
+  theme_minimal(base_size = 14) +
+  theme(
+     legend.position = c(0.25, 0.75), # Move legend inside plot
+  #  legend.position = "bottom", # Move legend to bottom of plot
+    text = element_text(family = "jo"),
+    axis.title.x = element_text(margin = margin(15, 0, 0, 0)),
+    axis.title.y = element_text(margin = margin(0, 15, 0, 0)),
+    plot.title = element_text(margin = margin(0, 0, 10, 0), face = "bold"),
+    plot.subtitle = element_text(margin = margin(0, 0, 15, 0)),
+    plot.margin = margin(20, 20, 20, 20),
+    plot.title.position = "plot"
+  )
+```
+
+We can use annotations to draw attention to certain pieces of the data.
+
+```{r}
+ggplot(penguins_clean, aes(x = flipper_length_mm, y = body_mass_g,
+                           color = species, shape = species)) +
+  geom_point(size = 3, alpha = 0.8) +
+  scale_color_manual(values = c("darkorange", "purple", "cyan4")) +
+  scale_y_continuous(labels = scales::label_comma()) +
+  labs(title = "Penguin size, Palmer Station LTER",
+       subtitle = "Flipper length and body mass for Adelie, Chinstrap, and Gentoo Penguins",
+       x = "Flipper length (mm)",
+       y = "Body mass (g)",
+       color = "Penguin species",
+       shape = "Penguin species") +
+  ggforce::geom_mark_ellipse(aes(filter = species == "Gentoo",
+                                 label = "Gentoo penguins",
+                                 description = "This species tends to have larger body masses and flipper lengths than the other species"),
+                             color = "cyan4",
+                             label.family = "jo",
+                             label.fontsize = 14) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "bottom", # We can also try the legend on the bottom
+    legend.justification.bottom = 1,
+    text = element_text(family = "jo"),
+    axis.title.x = element_text(margin = margin(15, 0, 0, 0)),
+    axis.title.y = element_text(margin = margin(0, 15, 0, 0)),
+    plot.title = element_text(face = "bold"),
+    plot.subtitle = element_text(margin = margin(0, 0, 15, 0)),
+    plot.margin = margin(20, 20, 20, 20),
+    plot.title.position = "plot"
+  )
+
+# Turn off the showtext renderer
+showtext.end()
+```
+
+## Trendlines
+
+It can be helpful to visualize relationships in data by adding a trend line! This can really highlight relationships to your reader, but should really be careful to be added to your data responsibly. Let's use a scatterplot of bill depth vs bill length as an example:
+
+```{r}
+# Simple plot of bill length vs width
+ggplot(data = penguins_clean) +
+  geom_point(aes(x = bill_length_mm,
+                 y = bill_depth_mm)) 
+
+# Let's see what it looks like if we fit a linear model to this data using geom_smooth
+ggplot(data = penguins_clean) +
+  geom_point(aes(x = bill_length_mm,
+                 y = bill_depth_mm)) +
+  geom_smooth(aes(x = bill_length_mm,
+                 y = bill_depth_mm),
+              method = "lm", se = FALSE)
+```
+
+In this plot, we would gather that penguin bill depth and penguin bill length are negatively related to one another.
+
+But wait... what happens if we include our groups?
+
+```{r}
+# Color points by species
+ggplot(data = penguins_clean) +
+  geom_point(aes(x = bill_length_mm,
+                 y = bill_depth_mm,
+                 color = species)) +
+  geom_smooth(aes(x = bill_length_mm,
+                 y = bill_depth_mm),
+              method = "lm", se = FALSE)
+```
+
+Interesting how the overall trend line goes against what you see now that we are colored by group?
+
+```{r}
+# Seperate lines for each group
+ggplot(data = penguins_clean) +
+  geom_point(aes(x = bill_length_mm,
+                 y = bill_depth_mm,
+                 color = species)) +
+  geom_smooth(aes(x = bill_length_mm,
+                 y = bill_depth_mm,
+                 color = species),
+              method = "lm", se = FALSE)
+```
+
+This is an example of Simpson's Paradox, a common stats phenomenon where a relationship between variables observed when groups are combined reverses when the groups are observed separately. 
+
+It is important when you are creating analyses that you have a solid understanding about your data structure and study system!
+
+## Legends
+
+Legends are a tricky one. On one hand, they are often necessary to guide the reader through your plot (or, in the case of a scientific journal, often expected in a certain format). Other times, they are redundant and just adding noise. Here are a handful of creative ways to replace a legend in your viz:
+
+1. When you can, I almost always recommend moving the legend inside of your plot, as we did briefly in the previous example
+
+Here is a new example plot to demonstrate: 
+```{r}
+# Scatterplot of bill length vs depth
 ggplot(data = penguins_clean,
        aes(x = bill_length_mm,
            y = bill_depth_mm,
@@ -468,12 +720,11 @@ ggplot(data = penguins_clean,
   theme_minimal(base_size = 14) +
   theme(legend.position = c(0.85, 0.15),
         plot.title.position = "plot",
-        plot.caption = element_text(hjust = 0, face= "italic"),
-        plot.caption.position = "plot",
         plot.margin = margin(10,10,10,10),
         axis.title.x = element_text(margin = margin(15, 0, 0, 0)),
         axis.title.y = element_text(margin = margin(0, 15, 0, 0)),
-        plot.subtitle = element_text(margin = margin(0,0,15,0)))
+        plot.subtitle = element_text(margin = margin(0,0,15,0)),
+        plot.title = element_text(face = "bold"))
 
 
 # 2. incorporate legend into the title
@@ -532,77 +783,3 @@ ggplot(penguins, aes(x = bill_length_mm, y = bill_depth_mm, color = species, sha
 ```
 
 
-
-## Using some index data?
-
-```{r}
-# Read in data ----
-temp <- read_rds(here("data", "raw", "logger_data_temp.rds"))
-```
-
-```{r}
-# Let's get monthly high
-temp_agg <- temp |>
-  separate(col = datetime, into = c("date", "time"), sep = " ") |>
-  mutate(date = as.Date(date),
-         year = year(date),
-         month = month(date)) |>
-  group_by(site, date) |>
-  summarise(daily_high = max(tidbit_temp_c)) |>
-  ungroup()
-
-ggplot(temp_agg, aes(x = date, y = daily_high, color = site)) +
-  geom_line() +
-  theme_minimal(base_size = 12)
-
-ggplot(temp_agg, aes(x = site, y = daily_high, color = site)) +
-  geom_jitter(alpha = 0.3) +
-  geom_boxplot(fill = NA) +
-  scale_color_brewer(type = "qual", palette = 2) +
-  coord_flip() +
-  theme_minimal(base_size = 12) +
-  theme()
-
-ggplot(temp_agg, aes(x = daily_high, y = site, fill = daily_high)) +
-  geom_density_ridges_gradient(alpha = 0.5) +
-  labs(x = "Daily High Temperature",
-       title = "Daily High Temperatures Across Puget Sound Monitoring Sites",
-       caption = "Data: 2025, Puget Sound Restoration Fund") +
-  scale_x_continuous(labels = scales::label_glue("{x}ºC")) +
-  scale_fill_viridis_c() +
-  theme_minimal(base_size = 14) +
-  theme(axis.title.y = element_blank(),
-        plot.title.position = "plot",
-        plot.caption = element_text(margin = margin(15, 0, 0, 0),
-                                    color = "grey",
-                                    face = "italic"),
-        plot.caption.position = "plot",
-        legend.position = "none",
-        axis.title.x = element_text(margin = margin(15, 0, 0, 0)))
-
-temp_agg$site <- factor(temp_agg$site)
-
-ggplot(temp_agg, aes(x = daily_high, y = site, fill = ..x..)) +
-  scale_fill_viridis_c(option = "C") +
-  ggridges::geom_density_ridges_gradient(aes( alpha = 0.2)) +
-  labs(
-    x = "Daily High Temperature",
-    title = "Daily High Temperatures Across Puget Sound Monitoring Sites",
-    caption = "Data: 2025, Puget Sound Restoration Fund"
-  ) +
-  scale_x_continuous(labels = scales::label_glue("{x}ºC")) +
-  
-  theme_minimal(base_size = 14) +
-  theme(
-    axis.title.y = element_blank(),
-    plot.title.position = "plot",
-    plot.caption = element_text(margin = margin(15, 0, 0, 0),
-                                color = "grey",
-                                face = "italic"),
-    plot.caption.position = "plot",
-    legend.position = "none",
-    axis.title.x = element_text(margin = margin(15, 0, 0, 0))
-  )
-
-
-```
