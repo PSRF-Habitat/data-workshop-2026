@@ -2,6 +2,8 @@
 title: "PSRF Data Workshop 2026"
 author: "Marina Kochuten"
 format: html
+editor_options: 
+  chunk_output_type: console
 ---
 
 # Intro to Quarto & Markdown
@@ -91,15 +93,14 @@ This script hosts the code to clean and visualize data about the Palmer Penguins
 
 **About the data**
 
-There are 3 data files used in this analysis:
+There are 2 data files used in this analysis:
 
 - `messy_penguins.csv`: contains size measurements for three penguin species observed on three islands in the Palmer Archipelago, Antarctica
-- `island_info.csv`
-- `penguins_species_info.csv`
+- `nesting.csv`: contains nesting site counts for each species, on each island
 
 `messy_penguins.csv` is derived from the Palmer Penguins data set from the Environmental Data Initiative (EDI) Data Portal. These data were collected from 2007 - 2009 by Dr. Kristen Gorman with the Palmer Station Long Term Ecological Research Program, part of the US Long Term Ecological Research Network. This data set was purposefully "messied" in order to practice some important data wrangling techniques.
 
-The other two data sets are entirely constructed from my imagination for teaching purposes
+`nesting.csv` is entirely constructed from my imagination for teaching purposes!
 
 ## Setup
 
@@ -112,14 +113,13 @@ library(lubridate)
 
 # Read in data ----
 penguins_raw <- read_csv(here("data", "raw", "messy_penguins.csv"))
-island_info_raw <- read_csv(here("data", "raw", "island_info.csv")) 
-species_info_raw <- read_csv(here("data", "raw", "penguin_species_info.csv"))
+nesting_raw <- read_csv(here("data", "raw", "nesting.csv")) 
 ```
 
 
 ## Data exploration
 
-Always take some time to get to know the data. Understanding the underlying structure of your data ahead of time makes cleaning and analysis much easiser later!
+Always take some time to get to know the data. Understanding the underlying structure of your data ahead of time makes cleaning and analysis much easier later!
 
 ### Penguins data
 
@@ -136,13 +136,9 @@ unique(penguins_raw$Species)
 # What islands?
 unique(penguins_raw$island)
 # Looks like we will need to clean up this column later
-
-# Are all species of penguins represented on all islands?
-penguins_raw |>
-  distinct(Species, island)
 ```
 
-### Island info
+### Nesting
 
 ```{r}
 # What columns are in the Island info data?
@@ -294,3 +290,319 @@ write_csv(penguins_clean, here("data", "processed", "penguins.csv"))
 
 Now that we have completed this chuck of data cleaning, let's push to GitHub. 
 
+## Some exploratory viz
+
+
+
+
+## Nesting Sites
+
+Let's say we are interesting in comparing the number of female penguins counted and the number of nesting sites each year. Since these data live in different datasets we need to join them! 
+
+First, we need to get our nesting data in tidy format:
+
+```{r}
+# Pivot nesting data from wide to long
+nesting_clean <- nesting_raw |>
+  pivot_longer(cols = starts_with("nesting"),
+               names_to = "year",
+               names_prefix = "nesting_sites_",
+               values_to = "nesting_sites")
+```
+
+And, to make things easier later let's count female penguins now:
+
+```{r}
+# Count the number of female penguins for each species, island, and year
+penguins_fem_count <- penguins_clean |>
+  group_by(species, island, sex, year) |>
+  summarise(count = n()) |>
+  filter(sex == "female")
+```
+
+
+Next, we need to choose which join to use. There are many kinds, here are a few:
+
+- **Full join**: Keep all observations from both datasets
+- **Left join**: Keep all observations in dataset y that have matches in x
+- **Anti join**: Keep only observations in x that have no matches in y
+
+When you join two datasets, they need a shared key to join on.
+
+In our case, we want to use a left join, joining the nesting data to the penguins on species, island, and year.
+
+```{r}
+# Join penguins and nesting data
+pen_nest <- left_join(penguins_fem_count, nesting_clean,
+                      by = c("species", "island", "year"))
+
+# Error - need to make year in nesting_clean numeric
+nesting_clean <- nesting_clean |>
+  mutate(year = as.numeric(year))
+
+# Now try joining penguins and nesting data
+pen_nest <- left_join(penguins_fem_count, nesting_clean,
+                      by = c("species", "island", "year"))
+```
+
+Now we can visualize the relationship!
+
+```{r}
+# Exploratory viz - female penguin count vs number of nesting sites
+ggplot(pen_nest) +
+  geom_point(aes(x = nesting_sites, y = count, color = species)) +
+  labs(title = "Penguins counted vs number of nesting sites")
+```
+
+
+# Exploring viz to make
+
+```{r}
+# Penguin counts bar chart
+counts_bar <- penguins_clean |>
+  mutate(species = fct_rev(fct_infreq(species))) |>
+  ggplot() +
+  geom_bar(aes(x = species, fill = species)) +
+  geom_text(aes(x = species, label = after_stat(count)),
+            stat = "count",
+            hjust = 1.5,
+            color = "white",
+            size = 5) +
+ scale_fill_manual(values = c("darkorange","purple","cyan4")) +
+  labs(title = "Penguins counts at Palmer Station LTER",
+       subtitle = "2007 - 2009",
+       caption = "Data: Gorman et al. 2014 via {palmerpenguins}") +
+  coord_flip() +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.title = element_blank(),
+    legend.position = "none",
+    panel.grid = element_blank(),
+    plot.title.position = "plot",
+    axis.text.x = element_blank(),
+    plot.margin = margin(20,20,20,20),
+    plot.caption = element_text(face = "italic",
+                                color = "grey50"))
+
+ggsave(here("figs", "counts_bar.png"), width = 6)
+```
+
+```{r}
+# highlights and annotations ----
+# ex 1:
+ggplot(data = penguins_clean, aes(x = body_mass_g)) +
+  geom_histogram(aes(fill = species), 
+                 alpha = 0.5, 
+                 position = "identity") +
+  scale_fill_manual(values = c("darkorange","purple","cyan4")) +
+  gghighlight(species == "Chinstrap", label_key = type) +
+  labs(x = "Body mass (g)",
+       y = "Frequency",
+       title = "Penguin body mass",
+       fill = "Species") +
+  theme_minimal()
+
+# ex 2:
+ggplot(data = penguins_clean, aes(x = body_mass_g)) +
+  geom_histogram(aes(fill = species), 
+                 alpha = 0.5, 
+                 position = "identity") +
+  scale_fill_manual(values = c("darkorange","purple","cyan4")) +
+  gghighlight() +
+  facet_wrap(~species) +
+  labs(x = "Body mass (g)",
+       y = "Frequency",
+       title = "Penguin body mass") +
+  theme_minimal()
+
+# ex 3:
+ggplot(data = penguins,
+       aes(x = flipper_length_mm,
+           y = body_mass_g)) +
+  geom_point(aes(color = species, 
+                 shape = species),
+             size = 3,
+             alpha = 0.8) +
+  scale_color_manual(values = c("darkorange","purple","cyan4")) +
+  scale_y_continuous(labels = scales::label_comma()) +
+  labs(title = "Penguin size, Palmer Station LTER",
+       subtitle = "Flipper length and body mass for Adelie, Chinstrap and Gentoo Penguins",
+       x = "Flipper length (mm)",
+       y = "Body mass (g)",
+       color = "Penguin species",
+       shape = "Penguin species") + 
+  ggforce::geom_mark_ellipse(aes(filter = species == "Gentoo", 
+                                 label = "Gentoo penguins", 
+                                 description = "This species tends to have larger body masses and flipper lengths than the other species"),
+                             color = "cyan4") +
+  theme_minimal(base_size = 16) +
+  theme(legend.position = c(0.2, 0.8),
+        legend.background = element_rect(fill = "white", color = "white"),
+        plot.title.position = "plot",
+        plot.margin = margin(10,10,10,10),
+        axis.title.x = element_text(margin = margin(15, 0, 0, 0)),
+        axis.title.y = element_text(margin = margin(0, 15, 0, 0)),
+        plot.subtitle = element_text(margin = margin(0,0,15,0))
+  )
+```
+
+```{r}
+# legend options ----
+# 1. move legend inside of plot to reduce eye movement
+ggplot(data = penguins_clean,
+       aes(x = bill_length_mm,
+           y = bill_depth_mm,
+           group = species)) +
+  geom_point(aes(color = species, 
+                 shape = species),
+             size = 3,
+             alpha = 0.8) +
+  geom_smooth(method = "lm", se = FALSE, aes(color = species)) +
+  scale_color_manual(values = c("darkorange","purple","cyan4")) +
+  labs(title = "Penguin bill dimensions",
+       subtitle = "Bill length and depth for Adelie, Chinstrap and Gentoo Penguins at Palmer Station LTER",
+       x = "Bill length (mm)",
+       y = "Bill depth (mm)",
+       color = "Penguin species",
+       shape = "Penguin species") +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = c(0.85, 0.15),
+        plot.title.position = "plot",
+        plot.caption = element_text(hjust = 0, face= "italic"),
+        plot.caption.position = "plot",
+        plot.margin = margin(10,10,10,10),
+        axis.title.x = element_text(margin = margin(15, 0, 0, 0)),
+        axis.title.y = element_text(margin = margin(0, 15, 0, 0)),
+        plot.subtitle = element_text(margin = margin(0,0,15,0)))
+
+
+# 2. incorporate legend into the title
+ggplot(data = penguins_clean,
+       aes(x = bill_length_mm,
+           y = bill_depth_mm,
+           group = species)) +
+  geom_point(aes(color = species, 
+                 shape = species),
+             size = 3,
+             alpha = 0.8) +
+  geom_smooth(method = "lm", se = FALSE, aes(color = species)) +
+  scale_color_manual(values = c("darkorange","purple","cyan4")) +
+  labs(title = "Penguin bill dimensions",
+       
+       # Subtitle with HTML tags
+       subtitle = "Bill length and depth for
+       <span style='color:darkorange;'>**Adelie**</span>, 
+       <span style = 'color:purple;'>**Chinstrap**</span>, 
+       and <span style = 'color:cyan4;'>**Gentoo**</span>,
+        penguins at Palmer Station LTER",
+       x = "Bill length (mm)",
+       y = "Bill depth (mm)",
+       color = "Penguin species",
+       shape = "Penguin species") +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "none",  # Remove the original legend
+        plot.title.position = "plot",
+        plot.subtitle = ggtext::element_markdown(), # To let R know you are styling the text
+        plot.caption = element_text(hjust = 0, face= "italic"),
+        plot.caption.position = "plot",
+        plot.margin = margin(10,10,10,10),
+        axis.title.x = element_text(margin = margin(15, 0, 0, 0)),
+        axis.title.y = element_text(margin = margin(0, 15, 0, 0)))
+
+
+# 3. Label the lines directly
+ggplot(penguins, aes(x = bill_length_mm, y = bill_depth_mm, color = species, shape = species)) +
+  geom_point(size = 3, alpha = 0.8) +
+  geomtextpath::geom_labelsmooth(aes(label = species), method = "lm", size = 5) +
+  scale_color_manual(values = c("darkorange","purple","cyan4")) +
+  labs(title = "Penguin bill dimensions",
+       subtitle = "Bill length and depth for Adelie, Chinstrap and Gentoo Penguins at Palmer Station LTER",
+       x = "Bill length (mm)",
+       y = "Bill depth (mm)",
+       color = "Penguin species",
+       shape = "Penguin species") +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "none",  # Remove the original legend
+        plot.title.position = "plot",
+        plot.caption = element_text(hjust = 0, face= "italic"),
+        plot.caption.position = "plot",
+        plot.margin = margin(10,10,10,10),
+        axis.title.x = element_text(margin = margin(15, 0, 0, 0)),
+        axis.title.y = element_text(margin = margin(0, 15, 0, 0)))
+```
+
+
+
+## Using some index data?
+
+```{r}
+# Read in data ----
+temp <- read_rds(here("data", "raw", "logger_data_temp.rds"))
+```
+
+```{r}
+# Let's get monthly high
+temp_agg <- temp |>
+  separate(col = datetime, into = c("date", "time"), sep = " ") |>
+  mutate(date = as.Date(date),
+         year = year(date),
+         month = month(date)) |>
+  group_by(site, date) |>
+  summarise(daily_high = max(tidbit_temp_c)) |>
+  ungroup()
+
+ggplot(temp_agg, aes(x = date, y = daily_high, color = site)) +
+  geom_line() +
+  theme_minimal(base_size = 12)
+
+ggplot(temp_agg, aes(x = site, y = daily_high, color = site)) +
+  geom_jitter(alpha = 0.3) +
+  geom_boxplot(fill = NA) +
+  scale_color_brewer(type = "qual", palette = 2) +
+  coord_flip() +
+  theme_minimal(base_size = 12) +
+  theme()
+
+ggplot(temp_agg, aes(x = daily_high, y = site, fill = daily_high)) +
+  geom_density_ridges_gradient(alpha = 0.5) +
+  labs(x = "Daily High Temperature",
+       title = "Daily High Temperatures Across Puget Sound Monitoring Sites",
+       caption = "Data: 2025, Puget Sound Restoration Fund") +
+  scale_x_continuous(labels = scales::label_glue("{x}ºC")) +
+  scale_fill_viridis_c() +
+  theme_minimal(base_size = 14) +
+  theme(axis.title.y = element_blank(),
+        plot.title.position = "plot",
+        plot.caption = element_text(margin = margin(15, 0, 0, 0),
+                                    color = "grey",
+                                    face = "italic"),
+        plot.caption.position = "plot",
+        legend.position = "none",
+        axis.title.x = element_text(margin = margin(15, 0, 0, 0)))
+
+temp_agg$site <- factor(temp_agg$site)
+
+ggplot(temp_agg, aes(x = daily_high, y = site, fill = ..x..)) +
+  scale_fill_viridis_c(option = "C") +
+  ggridges::geom_density_ridges_gradient(aes( alpha = 0.2)) +
+  labs(
+    x = "Daily High Temperature",
+    title = "Daily High Temperatures Across Puget Sound Monitoring Sites",
+    caption = "Data: 2025, Puget Sound Restoration Fund"
+  ) +
+  scale_x_continuous(labels = scales::label_glue("{x}ºC")) +
+  
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.title.y = element_blank(),
+    plot.title.position = "plot",
+    plot.caption = element_text(margin = margin(15, 0, 0, 0),
+                                color = "grey",
+                                face = "italic"),
+    plot.caption.position = "plot",
+    legend.position = "none",
+    axis.title.x = element_text(margin = margin(15, 0, 0, 0))
+  )
+
+
+```

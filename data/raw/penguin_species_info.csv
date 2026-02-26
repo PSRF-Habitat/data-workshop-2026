@@ -1,4 +1,0 @@
-species,species_code,average_lifespan_years,conservation_status,diet_primary,breeding_season_start,average_dive_depth_m,population_estimate,scientific_name,first_described_year
-Adelie,ADPE,15,Least Concern,Krill,November,45,3800000,Pygoscelis adeliae,1840
-Chinstrap,CHPE,20,Least Concern,Krill,November,70,670000,Pygoscelis antarcticus,1844
-Gentoo,GEPE,18,Near Threatened,Fish,October,200,387000,Pygoscelis papua,1781
