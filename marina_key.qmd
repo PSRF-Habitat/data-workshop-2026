@@ -358,11 +358,16 @@ ggplot(pen_nest) +
 ```
 
 
-# Exploring viz to make
+# Visualization
+
+Let's build some viz together! In general, data viz has very few rules and a handful of suggestions. We won't have time to go over all of these today, but I can show you a few steps I take with almost all viz to make them look really nice and follow good practices.
+
+## Labels and Aesthetics
 
 ```{r}
 # Penguin counts bar chart
-counts_bar <- penguins_clean |>
+#counts_bar <- 
+penguins_clean |>
   mutate(species = fct_rev(fct_infreq(species))) |>
   ggplot() +
   geom_bar(aes(x = species)) +
@@ -387,7 +392,7 @@ counts_bar <- penguins_clean |>
     plot.caption = element_text(face = "italic",
                                 color = "grey50"))
 
- # theme(
+  # theme(
  #    axis.title = element_text(size = rel(1.2)), # 1.2 * base_size
  #    axis.text = element_text(size = rel(0.8))   # 0.8 * base_size
  #  )
@@ -395,14 +400,7 @@ counts_bar <- penguins_clean |>
 ggsave(here("figs", "counts_bar.png"), width = 6)
 ```
 
-
-
-
-# Visualization
-
-Let's build some viz together! In general, data viz has very few rules and a handful of suggestions. We won't have time to go over all of these today, but I can show you a few steps I take with almost all viz to make them look really nice and follow good practices.
-
-## Body mass histogram
+## Color & Highlighting
 
 Let's start with a base plot showing the distribution of penguin body masses: 
 
@@ -452,10 +450,7 @@ ggplot(data = penguins_clean, aes(x = body_mass_g, fill = species)) +
 ```
 
 
-## Highlighting and Annotating
-
-There are many ways to use highlighting and annotations to help make comparisons and draw out important messages. 
-
+There are many ways to use highlighting to help make comparisons and draw out important messages. 
 
 One way we can highlight specific groups:
 
@@ -524,6 +519,153 @@ pen_hist <- ggplot(data = penguins_clean, aes(x = body_mass_g, fill = species)) 
 ggsave(here("figs", "pen_hist.png"), pen_hist, width = 8, height = 4.5)
 ```
 
+
+## Trendlines
+
+It can be helpful to visualize relationships in data by adding a trend line! This can really highlight relationships to your reader, but should really be careful to be added to your data responsibly. Let's use a scatterplot of bill depth vs bill length as an example:
+
+```{r}
+# Simple plot of bill length vs width
+ggplot(data = penguins_clean) +
+  geom_point(aes(x = bill_length_mm,
+                 y = bill_depth_mm)) 
+
+# Let's see what it looks like if we fit a linear model to this data using geom_smooth
+ggplot(data = penguins_clean) +
+  geom_point(aes(x = bill_length_mm,
+                 y = bill_depth_mm)) +
+  geom_smooth(aes(x = bill_length_mm,
+                 y = bill_depth_mm),
+              method = "lm", se = FALSE)
+```
+
+In this plot, we would gather that penguin bill depth and penguin bill length are negatively related to one another.
+
+But wait... what happens if we include our species groups?
+
+```{r}
+# Color points by species
+ggplot(data = penguins_clean) +
+  geom_point(aes(x = bill_length_mm,
+                 y = bill_depth_mm,
+                 color = species)) +
+  geom_smooth(aes(x = bill_length_mm,
+                 y = bill_depth_mm),
+              method = "lm", se = FALSE)
+```
+
+Thinking that our trend line might not be acting as expected ... 
+
+```{r}
+# Seperate lines for each group
+ggplot(data = penguins_clean) +
+  geom_point(aes(x = bill_length_mm,
+                 y = bill_depth_mm,
+                 color = species)) +
+  geom_smooth(aes(x = bill_length_mm,
+                 y = bill_depth_mm,
+                 color = species),
+              method = "lm", se = FALSE)
+```
+
+This is an example of Simpson's Paradox, a common stats phenomenon where a relationship between variables observed when groups are combined reverses when the groups are observed separately. 
+
+It is important when you are creating analyses that you have a solid understanding about your data structure and study system!
+
+Let's make this one pretty :) 
+
+## Legends
+
+Legends are a tricky one. On one hand, they are often necessary to guide the reader through your plot (or, in the case of a scientific journal, often expected in a certain format). Other times, they are redundant and just adding noise. Here are a handful of creative ways to replace a legend in your viz:
+
+1. When you can, I almost always recommend moving the legend inside of your plot, as we did briefly in the previous example
+
+Here is a new example plot to demonstrate: 
+```{r}
+# Scatterplot of bill length vs depth
+ggplot(data = penguins_clean,
+       aes(x = bill_length_mm,
+           y = bill_depth_mm,
+           group = species)) +
+  geom_point(aes(color = species, 
+                 shape = species),
+             size = 3,
+             alpha = 0.8) +
+  geom_smooth(method = "lm", se = FALSE, aes(color = species)) +
+  scale_color_manual(values = c("darkorange","purple","cyan4")) +
+  labs(title = "Penguin bill dimensions",
+       subtitle = "Bill length and depth for Adelie, Chinstrap and Gentoo Penguins at Palmer Station LTER",
+       x = "Bill length (mm)",
+       y = "Bill depth (mm)",
+       color = "Penguin species",
+       shape = "Penguin species") +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = c(0.85, 0.15),
+        plot.title.position = "plot",
+        plot.margin = margin(10,10,10,10),
+        axis.title.x = element_text(margin = margin(15, 0, 0, 0)),
+        axis.title.y = element_text(margin = margin(0, 15, 0, 0)),
+        plot.subtitle = element_text(margin = margin(0,0,15,0)),
+        plot.title = element_text(face = "bold"))
+
+
+# 2. incorporate legend into the title
+ggplot(data = penguins_clean,
+       aes(x = bill_length_mm,
+           y = bill_depth_mm,
+           group = species)) +
+  geom_point(aes(color = species, 
+                 shape = species),
+             size = 3,
+             alpha = 0.8) +
+  geom_smooth(method = "lm", se = FALSE, aes(color = species)) +
+  scale_color_manual(values = c("darkorange","purple","cyan4")) +
+  labs(title = "Penguin bill dimensions",
+       
+       # Subtitle with HTML tags
+       subtitle = "Bill length and depth for
+       <span style='color:darkorange;'>**Adelie**</span>, 
+       <span style = 'color:purple;'>**Chinstrap**</span>, 
+       and <span style = 'color:cyan4;'>**Gentoo**</span>,
+        penguins at Palmer Station LTER",
+       
+       x = "Bill length (mm)",
+       y = "Bill depth (mm)",
+       color = "Penguin species",
+       shape = "Penguin species") +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "none",  # Remove the original legend
+        plot.title.position = "plot",
+        plot.subtitle = ggtext::element_markdown(), # To let R know you are styling the text
+        plot.title = element_text(face = "bold"),
+        plot.margin = margin(10,10,10,10),
+        axis.title.x = element_text(margin = margin(15, 0, 0, 0)),
+        axis.title.y = element_text(margin = margin(0, 15, 0, 0)))
+
+
+# 3. Label the lines directly
+ggplot(penguins_clean, aes(x = bill_length_mm, y = bill_depth_mm, color = species, shape = species)) +
+  geom_point(size = 3, alpha = 0.8) +
+  geomtextpath::geom_labelsmooth(aes(label = species), method = "lm", size = 5) +
+  scale_color_manual(values = c("darkorange","purple","cyan4")) +
+  labs(title = "Penguin bill dimensions",
+       subtitle = "Bill length and depth for Adelie, Chinstrap and Gentoo Penguins at Palmer Station LTER",
+       x = "Bill length (mm)",
+       y = "Bill depth (mm)",
+       color = "Penguin species",
+       shape = "Penguin species") +
+  theme_minimal(base_size = 20) +
+  theme(legend.position = "none",  # Remove the original legend
+        plot.title.position = "plot",
+        plot.caption = element_text(hjust = 0, face= "italic"),
+        plot.caption.position = "plot",
+        plot.title = element_text(face = "bold"),
+        plot.margin = margin(10,10,10,10),
+        axis.title.x = element_text(margin = margin(15, 0, 0, 0)),
+        axis.title.y = element_text(margin = margin(0, 15, 0, 0)))
+```
+
+## Annotations
 
 Annotations can be a good way to call out trends or observations. Let's start a new plot, this time a scatter plot of flipper length vs body mass:
 
@@ -606,7 +748,7 @@ ggplot(penguins_clean, aes(x = flipper_length_mm, y = body_mass_g,
 We can use annotations to draw attention to certain pieces of the data.
 
 ```{r}
-ggplot(penguins_clean, aes(x = flipper_length_mm, y = body_mass_g,
+pen_size_annot <- ggplot(penguins_clean, aes(x = flipper_length_mm, y = body_mass_g,
                            color = species, shape = species)) +
   geom_point(size = 3, alpha = 0.8) +
   scale_color_manual(values = c("darkorange", "purple", "cyan4")) +
@@ -623,7 +765,7 @@ ggplot(penguins_clean, aes(x = flipper_length_mm, y = body_mass_g,
                              color = "cyan4",
                              label.family = "jo",
                              label.fontsize = 14) +
-  theme_minimal(base_size = 14) +
+  theme_minimal(base_size = 16) +
   theme(
     legend.position = "bottom", # We can also try the legend on the bottom
     legend.justification.bottom = 1,
@@ -636,150 +778,16 @@ ggplot(penguins_clean, aes(x = flipper_length_mm, y = body_mass_g,
     plot.title.position = "plot"
   )
 
+ggsave(here("figs", "pen_size_annot.png"), pen_size_annot, 
+       width = 14, height = 10)
+
+# Woah. font size is being wonky. this is the one frustrating piece of showtext / playing with fonts. the showtext package renders the fonts at 96 DPI, which matches what the RStudio viewer shows us. However, we often want a higher resolution than that when we are exporting our plots. ggsave() default DPI is 300 (you can change this, but 300 DPI is standard for high quality images). 
+
+# To get around this, we will tell showtext to give us fonts at 300 DPI
+showtext_opts(dpi = 300) # Set the text scaling to match ggplot save
+
+# We will want to run this, then run our plot code, and then save. You will notice that things in the RStuido viewer now look pretty bad, but if we open the saved image from our computer directly, things should look pretty good!
+
 # Turn off the showtext renderer
-showtext.end()
+showtext_end()
 ```
-
-## Trendlines
-
-It can be helpful to visualize relationships in data by adding a trend line! This can really highlight relationships to your reader, but should really be careful to be added to your data responsibly. Let's use a scatterplot of bill depth vs bill length as an example:
-
-```{r}
-# Simple plot of bill length vs width
-ggplot(data = penguins_clean) +
-  geom_point(aes(x = bill_length_mm,
-                 y = bill_depth_mm)) 
-
-# Let's see what it looks like if we fit a linear model to this data using geom_smooth
-ggplot(data = penguins_clean) +
-  geom_point(aes(x = bill_length_mm,
-                 y = bill_depth_mm)) +
-  geom_smooth(aes(x = bill_length_mm,
-                 y = bill_depth_mm),
-              method = "lm", se = FALSE)
-```
-
-In this plot, we would gather that penguin bill depth and penguin bill length are negatively related to one another.
-
-But wait... what happens if we include our groups?
-
-```{r}
-# Color points by species
-ggplot(data = penguins_clean) +
-  geom_point(aes(x = bill_length_mm,
-                 y = bill_depth_mm,
-                 color = species)) +
-  geom_smooth(aes(x = bill_length_mm,
-                 y = bill_depth_mm),
-              method = "lm", se = FALSE)
-```
-
-Interesting how the overall trend line goes against what you see now that we are colored by group?
-
-```{r}
-# Seperate lines for each group
-ggplot(data = penguins_clean) +
-  geom_point(aes(x = bill_length_mm,
-                 y = bill_depth_mm,
-                 color = species)) +
-  geom_smooth(aes(x = bill_length_mm,
-                 y = bill_depth_mm,
-                 color = species),
-              method = "lm", se = FALSE)
-```
-
-This is an example of Simpson's Paradox, a common stats phenomenon where a relationship between variables observed when groups are combined reverses when the groups are observed separately. 
-
-It is important when you are creating analyses that you have a solid understanding about your data structure and study system!
-
-## Legends
-
-Legends are a tricky one. On one hand, they are often necessary to guide the reader through your plot (or, in the case of a scientific journal, often expected in a certain format). Other times, they are redundant and just adding noise. Here are a handful of creative ways to replace a legend in your viz:
-
-1. When you can, I almost always recommend moving the legend inside of your plot, as we did briefly in the previous example
-
-Here is a new example plot to demonstrate: 
-```{r}
-# Scatterplot of bill length vs depth
-ggplot(data = penguins_clean,
-       aes(x = bill_length_mm,
-           y = bill_depth_mm,
-           group = species)) +
-  geom_point(aes(color = species, 
-                 shape = species),
-             size = 3,
-             alpha = 0.8) +
-  geom_smooth(method = "lm", se = FALSE, aes(color = species)) +
-  scale_color_manual(values = c("darkorange","purple","cyan4")) +
-  labs(title = "Penguin bill dimensions",
-       subtitle = "Bill length and depth for Adelie, Chinstrap and Gentoo Penguins at Palmer Station LTER",
-       x = "Bill length (mm)",
-       y = "Bill depth (mm)",
-       color = "Penguin species",
-       shape = "Penguin species") +
-  theme_minimal(base_size = 14) +
-  theme(legend.position = c(0.85, 0.15),
-        plot.title.position = "plot",
-        plot.margin = margin(10,10,10,10),
-        axis.title.x = element_text(margin = margin(15, 0, 0, 0)),
-        axis.title.y = element_text(margin = margin(0, 15, 0, 0)),
-        plot.subtitle = element_text(margin = margin(0,0,15,0)),
-        plot.title = element_text(face = "bold"))
-
-
-# 2. incorporate legend into the title
-ggplot(data = penguins_clean,
-       aes(x = bill_length_mm,
-           y = bill_depth_mm,
-           group = species)) +
-  geom_point(aes(color = species, 
-                 shape = species),
-             size = 3,
-             alpha = 0.8) +
-  geom_smooth(method = "lm", se = FALSE, aes(color = species)) +
-  scale_color_manual(values = c("darkorange","purple","cyan4")) +
-  labs(title = "Penguin bill dimensions",
-       
-       # Subtitle with HTML tags
-       subtitle = "Bill length and depth for
-       <span style='color:darkorange;'>**Adelie**</span>, 
-       <span style = 'color:purple;'>**Chinstrap**</span>, 
-       and <span style = 'color:cyan4;'>**Gentoo**</span>,
-        penguins at Palmer Station LTER",
-       x = "Bill length (mm)",
-       y = "Bill depth (mm)",
-       color = "Penguin species",
-       shape = "Penguin species") +
-  theme_minimal(base_size = 14) +
-  theme(legend.position = "none",  # Remove the original legend
-        plot.title.position = "plot",
-        plot.subtitle = ggtext::element_markdown(), # To let R know you are styling the text
-        plot.caption = element_text(hjust = 0, face= "italic"),
-        plot.caption.position = "plot",
-        plot.margin = margin(10,10,10,10),
-        axis.title.x = element_text(margin = margin(15, 0, 0, 0)),
-        axis.title.y = element_text(margin = margin(0, 15, 0, 0)))
-
-
-# 3. Label the lines directly
-ggplot(penguins, aes(x = bill_length_mm, y = bill_depth_mm, color = species, shape = species)) +
-  geom_point(size = 3, alpha = 0.8) +
-  geomtextpath::geom_labelsmooth(aes(label = species), method = "lm", size = 5) +
-  scale_color_manual(values = c("darkorange","purple","cyan4")) +
-  labs(title = "Penguin bill dimensions",
-       subtitle = "Bill length and depth for Adelie, Chinstrap and Gentoo Penguins at Palmer Station LTER",
-       x = "Bill length (mm)",
-       y = "Bill depth (mm)",
-       color = "Penguin species",
-       shape = "Penguin species") +
-  theme_minimal(base_size = 14) +
-  theme(legend.position = "none",  # Remove the original legend
-        plot.title.position = "plot",
-        plot.caption = element_text(hjust = 0, face= "italic"),
-        plot.caption.position = "plot",
-        plot.margin = margin(10,10,10,10),
-        axis.title.x = element_text(margin = margin(15, 0, 0, 0)),
-        axis.title.y = element_text(margin = margin(0, 15, 0, 0)))
-```
-
-
