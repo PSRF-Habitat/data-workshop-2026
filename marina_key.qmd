@@ -293,11 +293,6 @@ write_csv(penguins_clean, here("data", "processed", "penguins.csv"))
 
 Now that we have completed this chuck of data cleaning, let's push to GitHub. 
 
-## Some exploratory viz
-
-
-
-
 ## Nesting Sites
 
 Let's say we are interesting in comparing the number of female penguins counted and the number of nesting sites each year. Since these data live in different datasets we need to join them! 
@@ -364,43 +359,187 @@ Let's build some viz together! In general, data viz has very few rules and a han
 
 ## Labels and Aesthetics
 
+Let's start with a simple bar chart of penguin species counts
+
 ```{r}
-# Penguin counts bar chart
-#counts_bar <- 
-penguins_clean |>
-  mutate(species = fct_rev(fct_infreq(species))) |>
-  ggplot() +
+# Simple bar chart
+ggplot(penguins_clean) +
+  geom_bar(aes(x = species))
+```
+
+All figures definitely need a title, and a caption is also usually a good idea. 
+
+```{r}
+# Add in titles and caption
+ggplot(penguins_clean) +
+  geom_bar(aes(x = species)) +
+  labs(title = "Penguin counts at Palmer Station LTER",
+       subtitle = "2007 - 2009",
+       caption = "Data: Gorman et al. 2014 via {palmerpenguins}")
+```
+
+Typically, we see categorical variables placed on an x-axis and numeric on the y. I, and others, argue that the rules about which variable go on which axis can be bent to improve the readability of your plot. That is unless you have date as a variable, which should always go on the x-axis. Or, if you are producing something for a very scientific audience, in which case you should stick to independent variable on the x and dependent on the y.
+
+I always recommend putting whichever has longer axis labels on the y, especially when you have long labels, like species names, that might run into one another. You may be temped in this case to tilt the labels to 45 or even 90 degrees. Resist this urge! It is shown that a reader is much less likely to actually read the labels if they have to tilt their head to see them. 
+
+If you cannot switch your axes for whatever reason, consider ways to shorten your axes labels before you rotate them.
+
+Let's rotate our axes so species are on the y
+
+```{r}
+# Rotate axes
+ggplot(penguins_clean) +
+  geom_bar(aes(x = species)) +
+  labs(title = "Penguin counts at Palmer Station LTER",
+       subtitle = "2007 - 2009",
+       caption = "Data: Gorman et al. 2014 via {palmerpenguins}") +
+  coord_flip()
+```
+
+By default, ggplot has ordered these bars alphabetically. Let's order them from highest to lowest
+
+```{r}
+# Order bars descending
+ggplot(penguins_clean |>
+         mutate(species = fct_rev(fct_infreq(species)))) +
+  geom_bar(aes(x = species)) +
+  labs(title = "Penguin counts at Palmer Station LTER",
+       subtitle = "2007 - 2009",
+       caption = "Data: Gorman et al. 2014 via {palmerpenguins}") +
+  coord_flip()
+```
+
+This chart would be great for knowing the relative abundance of each species. But what if we wanted to know the exact count? Adding labels to the end of bar charts is a great way to enhance accessibility 
+
+```{r}
+# Label bars with counts
+ggplot(penguins_clean |>
+         mutate(species = fct_rev(fct_infreq(species)))) +
   geom_bar(aes(x = species)) +
   geom_text(aes(x = species, label = after_stat(count)),
             stat = "count",
             hjust = 1.5,
             color = "white",
             size = 5) +
- # scale_fill_manual(values = c("darkorange","purple","cyan4")) +
-  labs(title = "Penguins counts at Palmer Station LTER",
+  labs(title = "Penguin counts at Palmer Station LTER",
+       subtitle = "2007 - 2009",
+       caption = "Data: Gorman et al. 2014 via {palmerpenguins}") +
+  coord_flip()
+```
+
+All of the information we would like to share is now on our plot! Next are the steps I take with nearly every plot to make things prettier and easier to read.
+
+The first thing to consider is how me might remove excess noise from this plot. Excess noise can come from color, lines, or text. You might notice that we have not made our species different colors in this plot - and this is intentional! Mapping variables to color should **only** come into play when you are highlighting a third variable that is not mapped to one of your axes. In this case, we could color all of the bars the same color if we wanted to for aesthetics, branding, if you really hate grey, etc. 
+
+ggplot has a number of built in themes. I will add theme_minimal to most all my plots as a starting place for making things look nice.
+
+```{r}
+# Apply theme_minimal()
+ggplot(penguins_clean |>
+         mutate(species = fct_rev(fct_infreq(species)))) +
+  geom_bar(aes(x = species)) +
+  geom_text(aes(x = species, label = after_stat(count)),
+            stat = "count",
+            hjust = 1.5,
+            color = "white",
+            size = 5) +
+  labs(title = "Penguin counts at Palmer Station LTER",
        subtitle = "2007 - 2009",
        caption = "Data: Gorman et al. 2014 via {palmerpenguins}") +
   coord_flip() +
-  theme_minimal(base_size = 14) +
-  theme(
-    axis.title = element_blank(),
-    legend.position = "none",
-    panel.grid = element_blank(),
-    plot.title.position = "plot",
-    axis.text.x = element_blank(),
-    plot.margin = margin(20,20,20,20),
-    plot.caption = element_text(face = "italic",
-                                color = "grey50"))
-
-  # theme(
- #    axis.title = element_text(size = rel(1.2)), # 1.2 * base_size
- #    axis.text = element_text(size = rel(0.8))   # 0.8 * base_size
- #  )
-
-ggsave(here("figs", "counts_bar.png"), width = 6)
+  theme_minimal()
 ```
 
+Other places I will look for ways to remove noise is in axes labels. For general audiences, it is ok to remove these labels if the information is easily gleaned elsewhere. In this case, I will absolutely remove the x and y axes titles. I might also remove the x axis labels, since our bar labels now tell us much quicker what our penguin counts are. 
+
+```{r}
+# Remove axes labels
+ggplot(penguins_clean |>
+         mutate(species = fct_rev(fct_infreq(species)))) +
+  geom_bar(aes(x = species)) +
+  geom_text(aes(x = species, label = after_stat(count)),
+            stat = "count",
+            hjust = 1.5,
+            color = "white",
+            size = 5) +
+  labs(title = "Penguin counts at Palmer Station LTER",
+       subtitle = "2007 - 2009",
+       caption = "Data: Gorman et al. 2014 via {palmerpenguins}") +
+  coord_flip() +
+  theme_minimal() +
+  theme(axis.title = element_blank(),
+        axis.text.x = element_blank())
+```
+
+I also do not need the grid lines anymore
+
+```{r}
+# Remove gridlines
+ggplot(penguins_clean |>
+         mutate(species = fct_rev(fct_infreq(species)))) +
+  geom_bar(aes(x = species)) +
+  geom_text(aes(x = species, label = after_stat(count)),
+            stat = "count",
+            hjust = 1.5,
+            color = "white",
+            size = 5) +
+  labs(title = "Penguin counts at Palmer Station LTER",
+       subtitle = "2007 - 2009",
+       caption = "Data: Gorman et al. 2014 via {palmerpenguins}") +
+  coord_flip() +
+  theme_minimal() +
+  theme(axis.title = element_blank(),
+        axis.text.x = element_blank(),
+        panel.grid = element_blank())
+```
+
+The last pieces I always adjust are text size, face (bold, italic, etc), position, and breathing room. Bold what you want your readers eye to draw to first. I also always like to increase margins around pretty much all text and the edges of my plot. Increasing whitespace and giving your plot room to breathe allows the reader's eyes to relax!
+
+```{r}
+# Remove gridlines
+counts_bar <- ggplot(penguins_clean |>
+         mutate(species = fct_rev(fct_infreq(species)))) +
+  geom_bar(aes(x = species)) +
+  geom_text(aes(x = species, label = after_stat(count)),
+            stat = "count",
+            hjust = 1.5,
+            color = "white",
+            size = 5) +
+  labs(title = "Penguin counts at Palmer Station LTER",
+       subtitle = "2007 - 2009",
+       caption = "Data: Gorman et al. 2014 via {palmerpenguins}") +
+  coord_flip() +
+  # Base size will adjust all fonts together
+  theme_minimal(base_size = 14) +
+  theme(axis.title = element_blank(),
+        axis.text.x = element_blank(),
+        panel.grid = element_blank(),
+        # I like to align the plot title with the edge of the plot
+        plot.title.position = "plot",
+        plot.title = element_text(face = "bold"),
+        plot.margin = margin(20,20,20,20),
+        plot.caption = element_text(face = "italic",
+                                color = "grey50",
+                                # We then change individual elements 
+                                # relative to the base size
+                                size = rel(0.7)))
+```
+
+Once I am happy with how my plot is looking in the plot viewer, I will save the figure to my figures folder! 
+
+General rule is to save to the size that you will be using your figure at. Default units are inches, but this can be changed to cm, px, etc. 
+
+```{r}
+ggsave(here("figs", "counts_bar.png"), counts_bar, width = 6)
+```
+
+After you save, open the figure from where it is saved on your computer. This is the only way to really know if you have chosen appropriate font sizes for the size you saved your image at. 12 pt font will look smaller on a 20 x 20 image than they will on a 5 x 5 image. Trial and error here is key.
+
+This was a simple example of the iterative process of building a visualization that guides your reader to exactly what you want them to take away with no excess information. This is an easy process for making viz for a general audience, but be careful when taking away elements that are expected when creating viz for a scientific audience. This chart would look beautiful in a presentation, report, or article, but probably wouldn't fly in a scientific journal.
+
 ## Color & Highlighting
+
+Using color tastefully and highlighting to guide your reader are great tools! 
 
 Let's start with a base plot showing the distribution of penguin body masses: 
 
@@ -434,7 +573,7 @@ ggplot(data = penguins_clean, aes(x = body_mass_g, fill = species)) +
   theme_minimal()
 ```
 
-Always a good idea to change from the ggplot default colors
+Always a good idea to change from the ggplot default colors, and to increase the transparency of your data when things are overlapping.
 
 ```{r}
 # Change colors & transparency
@@ -484,7 +623,7 @@ ggplot(data = penguins_clean, aes(x = body_mass_g, fill = species)) +
   theme_minimal()
 ```
 
-Now that we have a solid graphic form and messaging, I always add these last few touches to improve aesthetics and readability
+Now that we have a solid graphic form and messaging, we can add our last few touches to improve aesthetics and readability by increasing margins, styling and sizing fonts, etc.
 
 ```{r}
 pen_hist <- ggplot(data = penguins_clean, aes(x = body_mass_g, fill = species)) +
@@ -557,7 +696,7 @@ ggplot(data = penguins_clean) +
 Thinking that our trend line might not be acting as expected ... 
 
 ```{r}
-# Seperate lines for each group
+# Separate lines for each group
 ggplot(data = penguins_clean) +
   geom_point(aes(x = bill_length_mm,
                  y = bill_depth_mm,
@@ -573,6 +712,8 @@ This is an example of Simpson's Paradox, a common stats phenomenon where a relat
 It is important when you are creating analyses that you have a solid understanding about your data structure and study system!
 
 Let's make this one pretty :) 
+
+
 
 ## Legends
 
