@@ -331,8 +331,8 @@ In our case, we want to use a left join, joining the nesting data to the penguin
 
 ```{r}
 # Join penguins and nesting data
-pen_nest <- left_join(penguins_fem_count, nesting_clean,
-                      by = c("species", "island", "year"))
+# pen_nest <- left_join(penguins_fem_count, nesting_clean,
+#                       by = c("species", "island", "year"))
 
 # Error - need to make year in nesting_clean numeric
 nesting_clean <- nesting_clean |>
@@ -497,7 +497,8 @@ The last pieces I always adjust are text size, face (bold, italic, etc), positio
 
 ```{r}
 # Remove gridlines
-counts_bar <- ggplot(penguins_clean |>
+# counts_bar <- 
+ggplot(penguins_clean |>
          mutate(species = fct_rev(fct_infreq(species)))) +
   geom_bar(aes(x = species)) +
   geom_text(aes(x = species, label = after_stat(count)),
@@ -530,7 +531,7 @@ Once I am happy with how my plot is looking in the plot viewer, I will save the 
 General rule is to save to the size that you will be using your figure at. Default units are inches, but this can be changed to cm, px, etc. 
 
 ```{r}
-ggsave(here("figs", "counts_bar.png"), counts_bar, width = 6)
+# ggsave(here("figs", "counts_bar.png"), counts_bar, width = 6)
 ```
 
 After you save, open the figure from where it is saved on your computer. This is the only way to really know if you have chosen appropriate font sizes for the size you saved your image at. 12 pt font will look smaller on a 20 x 20 image than they will on a 5 x 5 image. Trial and error here is key.
@@ -626,7 +627,8 @@ ggplot(data = penguins_clean, aes(x = body_mass_g, fill = species)) +
 Now that we have a solid graphic form and messaging, we can add our last few touches to improve aesthetics and readability by increasing margins, styling and sizing fonts, etc.
 
 ```{r}
-pen_hist <- ggplot(data = penguins_clean, aes(x = body_mass_g, fill = species)) +
+# pen_hist <- 
+ggplot(data = penguins_clean, aes(x = body_mass_g, fill = species)) +
   geom_histogram(alpha = 0.5, 
                  position = "identity") +
   scale_fill_manual(values = c("darkorange","purple","cyan4")) +
@@ -655,7 +657,7 @@ pen_hist <- ggplot(data = penguins_clean, aes(x = body_mass_g, fill = species)) 
   )
 
 # Now that I am pleased with this plot, I can save:
-ggsave(here("figs", "pen_hist.png"), pen_hist, width = 8, height = 4.5)
+# ggsave(here("figs", "pen_hist.png"), pen_hist, width = 8, height = 4.5)
 ```
 
 
@@ -680,7 +682,7 @@ ggplot(data = penguins_clean) +
 
 In this plot, we would gather that penguin bill depth and penguin bill length are negatively related to one another.
 
-But wait... what happens if we include our species groups?
+Let's go back in and add color to indicate the different species
 
 ```{r}
 # Color points by species
@@ -693,7 +695,7 @@ ggplot(data = penguins_clean) +
               method = "lm", se = FALSE)
 ```
 
-Thinking that our trend line might not be acting as expected ... 
+Thinking that our trend line might not be acting as expected ... Let's make the relationships individual to each group
 
 ```{r}
 # Separate lines for each group
@@ -709,19 +711,17 @@ ggplot(data = penguins_clean) +
 
 This is an example of Simpson's Paradox, a common stats phenomenon where a relationship between variables observed when groups are combined reverses when the groups are observed separately. 
 
-It is important when you are creating analyses that you have a solid understanding about your data structure and study system!
+The main take away here is that it is important when you are creating analyses that you have a solid understanding about your data structure and study system!
 
 Let's make this one pretty :) 
-
 
 
 ## Legends
 
 Legends are a tricky one. On one hand, they are often necessary to guide the reader through your plot (or, in the case of a scientific journal, often expected in a certain format). Other times, they are redundant and just adding noise. Here are a handful of creative ways to replace a legend in your viz:
 
-1. When you can, I almost always recommend moving the legend inside of your plot, as we did briefly in the previous example
+1. When you can, I almost always recommend moving the legend inside of your plot, to reduce eye movement.
 
-Here is a new example plot to demonstrate: 
 ```{r}
 # Scatterplot of bill length vs depth
 ggplot(data = penguins_clean,
@@ -748,8 +748,11 @@ ggplot(data = penguins_clean,
         axis.title.y = element_text(margin = margin(0, 15, 0, 0)),
         plot.subtitle = element_text(margin = margin(0,0,15,0)),
         plot.title = element_text(face = "bold"))
+```
 
+We can also toss out the legend entirely if there are other obvious ways to understand the groupings in the plot. One fun one is to make the subtitle text double as your legend using colored text! If you do this, keep in mind that not everyone sees color the same way. I recommend downloading an app or extension that will allow you to see your screen as someone with Deuteranopia or other forms of color blindness (On Mac, I use color oracle which does a nice job). 
 
+```{r}
 # 2. incorporate legend into the title
 ggplot(data = penguins_clean,
        aes(x = bill_length_mm,
@@ -782,9 +785,14 @@ ggplot(data = penguins_clean,
         plot.margin = margin(10,10,10,10),
         axis.title.x = element_text(margin = margin(15, 0, 0, 0)),
         axis.title.y = element_text(margin = margin(0, 15, 0, 0)))
+```
 
+Lastly, and perhaps the most effective, is to label your lines directly. I am a huge fan of annotations:
 
+```{r}
 # 3. Label the lines directly
+#pen_size_annot <- 
+
 ggplot(penguins_clean, aes(x = bill_length_mm, y = bill_depth_mm, color = species, shape = species)) +
   geom_point(size = 3, alpha = 0.8) +
   geomtextpath::geom_labelsmooth(aes(label = species), method = "lm", size = 5) +
@@ -795,7 +803,7 @@ ggplot(penguins_clean, aes(x = bill_length_mm, y = bill_depth_mm, color = specie
        y = "Bill depth (mm)",
        color = "Penguin species",
        shape = "Penguin species") +
-  theme_minimal(base_size = 20) +
+  theme_minimal(base_size = 16) +
   theme(legend.position = "none",  # Remove the original legend
         plot.title.position = "plot",
         plot.caption = element_text(hjust = 0, face= "italic"),
@@ -804,11 +812,14 @@ ggplot(penguins_clean, aes(x = bill_length_mm, y = bill_depth_mm, color = specie
         plot.margin = margin(10,10,10,10),
         axis.title.x = element_text(margin = margin(15, 0, 0, 0)),
         axis.title.y = element_text(margin = margin(0, 15, 0, 0)))
+
+# ggsave(here("figs", "pen_size_annot.png"), pen_size_annot,
+#        width = 12, height = 8)
 ```
 
 ## Annotations
 
-Annotations can be a good way to call out trends or observations. Let's start a new plot, this time a scatter plot of flipper length vs body mass:
+Annotations can also be a good way to call out trends or observations. Let's start a new plot, this time a scatter plot of flipper length vs body mass:
 
 ```{r}
 ggplot(penguins_clean, aes(x = flipper_length_mm, y = body_mass_g,
@@ -859,7 +870,7 @@ ggplot(penguins_clean, aes(x = flipper_length_mm, y = body_mass_g,
   )
 ```
 
-This is looking good! I will talk more on creative ways to handle legends a bit later. For now, to reduce eye movement and give the data more room, let's move this legend to inside the plot
+This is looking good! For now, to reduce eye movement and give the data more room, let's move this legend to inside the plot
 
 ```{r}
 ggplot(penguins_clean, aes(x = flipper_length_mm, y = body_mass_g,
@@ -886,10 +897,12 @@ ggplot(penguins_clean, aes(x = flipper_length_mm, y = body_mass_g,
   )
 ```
 
-We can use annotations to draw attention to certain pieces of the data.
+We can use annotations to draw attention to certain pieces of the data. Let's highlight what we want our reader to take away from this plot:
 
 ```{r}
-pen_size_annot <- ggplot(penguins_clean, aes(x = flipper_length_mm, y = body_mass_g,
+# pen_size_annot <- 
+
+ggplot(penguins_clean, aes(x = flipper_length_mm, y = body_mass_g,
                            color = species, shape = species)) +
   geom_point(size = 3, alpha = 0.8) +
   scale_color_manual(values = c("darkorange", "purple", "cyan4")) +
@@ -919,15 +932,17 @@ pen_size_annot <- ggplot(penguins_clean, aes(x = flipper_length_mm, y = body_mas
     plot.title.position = "plot"
   )
 
-ggsave(here("figs", "pen_size_annot.png"), pen_size_annot, 
-       width = 14, height = 10)
+# ggsave(here("figs", "pen_size_annot.png"), pen_size_annot, 
+#        width = 14, height = 10)
 
-# Woah. font size is being wonky. this is the one frustrating piece of showtext / playing with fonts. the showtext package renders the fonts at 96 DPI, which matches what the RStudio viewer shows us. However, we often want a higher resolution than that when we are exporting our plots. ggsave() default DPI is 300 (you can change this, but 300 DPI is standard for high quality images). 
+# You might notice that if you open this saved image from your computer, the text size is not rendering as expected. This is a frustrating piece of showtext / playing with fonts. The showtext package renders the fonts at 96 DPI, which matches what the RStudio plot viewer shows us. However, we often want a higher resolution than that when we are exporting our plots. ggsave() default DPI is 300 (you can change this, but 300 DPI is standard for high quality images). 
 
 # To get around this, we will tell showtext to give us fonts at 300 DPI
 showtext_opts(dpi = 300) # Set the text scaling to match ggplot save
 
-# We will want to run this, then run our plot code, and then save. You will notice that things in the RStuido viewer now look pretty bad, but if we open the saved image from our computer directly, things should look pretty good!
+# We will want to run this, then re-run our plot code, and then save once more. You will notice that things in the RStuido viewer now look pretty bad, but if we open the saved image from our computer directly, things should look pretty good! 
+
+# Often when I am creating viz that will be saved and used in a paper, report, presentation, etc, I will save it to my computer early on and then iterate through changes, saving after each one and opening on my computer. It is certainly more time consuming, but will let you see exactly what you are going to get after saving.
 
 # Turn off the showtext renderer
 showtext_end()
